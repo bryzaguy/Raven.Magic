@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Raven.Magic.Client.Tests")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("A little magic added to the RavenDB client libraries.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
-[assembly: AssemblyProduct("Raven.Magic.Client.Tests")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2013")]
+[assembly: AssemblyCompany("Bryant Syme")]
+[assembly: AssemblyProduct("Raven.Magic.Client")]
+[assembly: AssemblyCopyright("Copyright © 2013 Bryant Syme")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
