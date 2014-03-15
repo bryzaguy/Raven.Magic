@@ -2,6 +2,7 @@
 {
     using System.Collections.Generic;
     using System.Linq;
+    using MagicDocumentSession;
     using Raven.Client;
     using Raven.Client.Embedded;
     using Raven.Tests.Helpers;
@@ -33,7 +34,6 @@
             //var store = new DocumentStore { Url = "http://localhost:8080" };
             //store.Initialize();
 
-            store.WithMagic();
             return store;
         }
 
@@ -81,6 +81,38 @@
             Assert.Null(new Musician().Id());
         }
 
+        public class TestWithId
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+        }
+
+        [Fact]
+        public void Can_Store_Document_That_Has_An_Id()
+        {
+            using (IDocumentStore store = DocumentStore())
+            {
+                var testWithId = new TestWithId { Name = "TestGuys" };
+                using (IDocumentSession session = store.OpenSession())
+                {
+                    session.Store(testWithId);
+                    session.SaveChanges();
+                }
+
+                using (IDocumentSession session = store.OpenSession())
+                {
+                    Assert.Equal(testWithId.Name, session.Load<TestWithId>(testWithId.Id).Name);
+                }
+            }
+        }
+
+        [Fact]
+        public void TestWithId_Can_Find_Natural_Id()
+        {
+            var test = new TestWithId {Id = "crazy"};
+            Assert.Equal(test.Id, test.Id());
+        }
+
         [Fact]
         public void Can_Create_Proxy_Object_From_Stored_Entity()
         {
@@ -121,7 +153,7 @@
         {
             var musician = new Musician {Name = "TestGuys"};
 
-            Musician result = musician.MapTo(new Musician());
+            Musician result = musician.MapTo(new Musician()) as Musician;
 
             Assert.Equal(musician.Name, result.Name);
         }
@@ -151,7 +183,7 @@
             using (IDocumentStore store = DocumentStore())
             {
                 const string id = "AmazingKey";
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     var band = new Band {Name = "Wooah"};
                     var instrument = new Instrument {Name = "Drums"};
@@ -163,13 +195,18 @@
                     session.SaveChanges();
                 }
 
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     var result = session.Load<Musician>(id);
                     Assert.Equal("Wooah", session.Load<Band>(result.Band.Id()).Name);
                     Assert.True(result.Instruments.Any(a => session.Load<Instrument>(a.Id()).Name == "Drums"));
                 }
             }
+        }
+
+        private static MagicDocumentSession OpenSession(IDocumentStore store)
+        {
+            return new MagicDocumentSession(store.OpenSession());
         }
     }
 }

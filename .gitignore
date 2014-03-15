@@ -3,5 +3,5 @@ packages/
 [Oo]bj/
 [Bb]in
 [Oo]bj
-*DotSettings.user
+*.user
 *v12.suo

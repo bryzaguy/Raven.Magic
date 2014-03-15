@@ -1,28 +1,11 @@
 ﻿namespace Raven.Magic.Client.RavenDocument
 {
-    using System;
-    using System.Reflection;
     using Castle.Core.Internal;
     using Castle.DynamicProxy;
-    using DocumentCollections;
-    using Imports.Newtonsoft.Json;
     using Raven.Client;
 
     public static class RavenDocumentExtentions
     {
-        public static IDocumentStore WithMagic(this IDocumentStore store, Action<JsonSerializer> customizeJsonSerializer = null)
-        {
-            store.Conventions.CustomizeJsonSerializer = json =>
-            {
-                json.Converters.Add(new RavenDocumentConverter());
-                json.Converters.Add(new DocumentCollectionConverter());
-                json.Converters.Add(new RavenDocumentProxyConverter());
-                if (customizeJsonSerializer != null) customizeJsonSerializer.Invoke(json);
-            };
-
-            return store;
-        }
-
         public static T Property<T>(this IDocumentSession session, T entity)
         {
             if (session.Advanced.GetDocumentId(entity) == null)
@@ -50,28 +33,50 @@
 
         public static string Id<T>(this T entity)
         {
-            return (entity is IRavenDocument) ? (entity as IRavenDocument).Id : null;
+            if (entity is IRavenDocument)
+                return (entity as IRavenDocument).Id;
+
+            var property = typeof (T).GetProperty("Id", typeof (string));
+            if (property != null)
+                return property.GetValue(entity) as string;
+
+            return null;
         }
 
         public static T Id<T>(this T entity, string id)
         {
+            var property = typeof (T).GetProperty("Id", typeof (string));
+            if (property != null)
+            {
+                if (property.CanWrite && (string) property.GetValue(entity) != id)
+                    property.SetValue(entity, id);
+
+                return entity;
+            }
+
             return new RavenDocument {Id = id}.AttachRavenIdToEntity(entity);
         }
 
         private static T AttachRavenIdToEntity<T>(this RavenDocument document, T entity)
         {
-            if (entity is IRavenDocument) return entity;
+            if (entity is IRavenDocument || Equals(entity, null)) return entity;
             var proxy = new ProxyGenerator().CreateClassProxyWithTarget(entity.GetType(), new[] {typeof (IRavenDocument)}, entity, GetOptions(document));
-            return entity.MapTo((T)proxy);
+            return (T)entity.MapTo(proxy);
         }
 
-        public static T MapTo<T>(this T entity, T proxy)
+        public static object MapTo(this object entity, object proxy)
         {
-            foreach (PropertyInfo propertyInfo in typeof (T).GetProperties())
+            foreach (var propertyInfo in entity.GetType().GetProperties())
             {
                 if (propertyInfo.CanWrite)
                     propertyInfo.SetValue(proxy, propertyInfo.GetValue(entity));
             }
+            
+            foreach (var fieldInfo in entity.GetType().GetFields())
+            {
+                fieldInfo.SetValue(proxy, fieldInfo.GetValue(entity));
+            }
+
             return proxy;
         }
 
@@ -80,14 +85,6 @@
             var options = new ProxyGenerationOptions();
             options.AddMixinInstance(document);
             return options;
-        }
-
-        internal static object ProxyWithId(this Type type, string id)
-        {
-            var document = new RavenDocument {Id = id};
-            var interfaces = new[] {typeof (IRavenDocument)};
-            if (type.IsInterface) return new ProxyGenerator().CreateInterfaceProxyWithoutTarget(type, interfaces, GetOptions(document));
-            return new ProxyGenerator().CreateClassProxy(type, interfaces, GetOptions(document));
         }
     }
 }

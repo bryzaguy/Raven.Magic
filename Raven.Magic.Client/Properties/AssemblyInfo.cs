@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyDescription("A little magic added to the RavenDB client libraries.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Bryant Syme")]
-[assembly: AssemblyProduct("Raven.Magic.Client")]
+[assembly: AssemblyProduct("RavenDb Magic Client")]
 [assembly: AssemblyCopyright("Copyright © 2013 Bryant Syme")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.0.0.2")]
+[assembly: AssemblyFileVersion("1.0.0.2")]

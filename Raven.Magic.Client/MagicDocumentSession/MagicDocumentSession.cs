@@ -2,9 +2,11 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Linq.Expressions;
     using Abstractions.Data;
-    using Castle.Core.Internal;
+    using DocumentCollections;
+    using Imports.Newtonsoft.Json;
     using Raven.Client;
     using Raven.Client.Document;
     using Raven.Client.Indexes;
@@ -17,7 +19,25 @@
 
         public MagicDocumentSession(IDocumentSession session)
         {
+            var conventions = session.Advanced.DocumentStore.Conventions;
+            conventions.CustomizeJsonSerializer = CustomizeJsonSerializer(conventions.CustomizeJsonSerializer);
             _session = session;
+        }
+
+        private static Action<JsonSerializer> CustomizeJsonSerializer(Action<JsonSerializer> customization)
+        {
+            return json =>
+            {
+                if (customization != null)
+                    customization(json);
+
+                if (json.Converters.All(a => a.GetType() != typeof(RavenDocumentConverter)))
+                {
+                    json.Converters.Add(new RavenDocumentConverter());
+                    json.Converters.Add(new DocumentCollectionConverter());
+                    json.Converters.Add(new RavenDocumentProxyConverter());
+                }
+            };
         }
 
         public void Dispose()

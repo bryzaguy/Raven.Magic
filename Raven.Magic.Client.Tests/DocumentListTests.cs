@@ -3,6 +3,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using DocumentCollections;
+    using MagicDocumentSession;
     using Moq;
     using Raven.Client;
     using Raven.Tests.Helpers;
@@ -36,7 +37,7 @@
     {
         public IDocumentStore DocumentStore()
         {
-            return NewDocumentStore().WithMagic();
+            return NewDocumentStore();
             //_store = new DocumentStore { Url = "http://localhost:8080" }.WithMagicProxies();
             //_store.Initialize();
             //return store;
@@ -126,13 +127,13 @@
             const string key = "animal";
             using (IDocumentStore store = DocumentStore())
             {
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     session.Store(new Animal { Sounds = session.List(new[] { new AnimalSound() { Code = code } }) }, key);
                     session.SaveChanges();
                 }
 
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     var animal = session.LoadWithIncludes<Animal>(key, a => a.Sounds);
                     Assert.Equal(code, animal.Sounds.First().Code);
@@ -149,14 +150,14 @@
 
             using (IDocumentStore store = DocumentStore())
             {
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     session.Store(sound);
                     session.Store(new Animal { Sounds = new[] { new AnimalSound() { Sound = session.LoadId(sound) } } }, key);
                     session.SaveChanges();
                 }
 
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     var animal = session.LoadWithIncludes<Animal>(key, a => a.Sounds.Select(b => b.Sound));
                     Assert.Equal(code, animal.Sounds.First().Sound.Code);
@@ -172,13 +173,13 @@
 
             using (IDocumentStore store = DocumentStore())
             {
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     session.Store(new Pet() { Animal = new Animal { Sounds = session.List(new[] { new AnimalSound() {Code = code}})}}, key);
                     session.SaveChanges();
                 }
 
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     var pet = session.LoadWithIncludes<Pet>(key, a => a.Animal.Sounds);
                     Assert.Equal(code, pet.Animal.Sounds.First().Code);
@@ -191,13 +192,13 @@
         {
             using (IDocumentStore store = DocumentStore())
             {
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     session.Store(new Pet { Animal = session.Property(new Animal() { Name = "awesome" }) }, "pet");
                     session.SaveChanges();
                 }
 
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     var pet = session.LoadWithIncludes<Pet>("pet", a => a.Animal);
                     Assert.Equal("awesome", pet.Animal.Name);
@@ -211,7 +212,7 @@
             // Arrange
             using (var store = DocumentStore())
             {
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     var animalSounds = session.List(new[] {new AnimalSound {Code = "Thing"}, new AnimalSound {Code = "Thing2"}});
                     var animal = new Animal {Name = "Something", Sounds = animalSounds};
@@ -221,7 +222,7 @@
                     session.SaveChanges();
                 }
 
-                using (IDocumentSession session = store.OpenSession())
+                using (IDocumentSession session = OpenSession(store))
                 {
                     Animal animal = session.Query<Animal>().Include<Animal>(a => a.Sounds).Customize(a => a.WaitForNonStaleResults()).First();
 
@@ -229,6 +230,11 @@
                     Assert.NotNull(session.List(animal.Sounds).First());
                 }
             }
+        }
+
+        private static IDocumentSession OpenSession(IDocumentStore store)
+        {
+            return new MagicDocumentSession(store.OpenSession());
         }
 
         [Fact]

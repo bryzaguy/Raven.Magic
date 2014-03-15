@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Linq;
     using System.Linq.Expressions;
     using Raven.Client.Document;
@@ -11,12 +10,12 @@
     public class MagicLoadWithInclude<T> : ILoaderWithInclude<T>
     {
         private readonly ILoaderWithInclude<T> _loader;
-        private readonly Expression<Func<T, object>> _path;
+        private readonly List<Expression<Func<T, object>>> _paths = new List<Expression<Func<T, object>>>();
 
         public MagicLoadWithInclude(ILoaderWithInclude<T> loader, Expression<Func<T, object>> path)
         {
             _loader = loader;
-            _path = path;
+            _paths.Add(path);
         }
 
         private static TResult[] LoadIds<TResult>(TResult[] items, IList<string> ids)
@@ -30,17 +29,22 @@
 
         public ILoaderWithInclude<T> Include(string path)
         {
-            return _loader.Include(path);
+            _loader.Include(path);
+            return this;
         }
 
         public ILoaderWithInclude<T> Include(Expression<Func<T, object>> path)
         {
-            return _loader.Include(path);
+            _loader.Include(path);
+            _paths.Add(path);
+            return this;
         }
 
         public ILoaderWithInclude<T> Include<TInclude>(Expression<Func<T, object>> path)
         {
-            return _loader.Include<TInclude>(path);
+            _loader.Include<TInclude>(path);
+            _paths.Add(path);
+            return this;
         }
 
         public T[] Load(params string[] ids)
