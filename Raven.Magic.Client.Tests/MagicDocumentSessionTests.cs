@@ -2,9 +2,11 @@
 {
     using System.Collections.Generic;
     using System.Linq;
+    using Castle.DynamicProxy;
     using DocumentCollections;
     using MagicDocumentSession;
     using Raven.Client;
+    using Raven.Client.Connection.Async;
     using Raven.Tests.Helpers;
     using RavenDocument;
     using Xunit;
@@ -31,6 +33,42 @@
                 using (IDocumentSession session = OpenSession(store))
                 {
                     Assert.Null(session.Load<Limb>("crapkeystuffs"));
+                }
+            }
+        }
+
+        [Fact]
+        public void Object_With_Key_Can_Save_Into_Database()
+        {
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(new Limb().Id("crapkeystuffs"));
+                    session.SaveChanges();
+                }
+            }
+        }
+
+
+        [Fact]
+        public void Loaded_Object_Property_Change_Is_Saved()
+        {
+            const string id = "crapkeystuffs";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(new Limb(){Name = "test1"}.Id(id));
+                    session.SaveChanges();
+                }
+
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var result = session.Load<Limb>(id);
+                    result.Name = "test2";
+                    session.SaveChanges();
+                    Assert.Equal(2, session.Advanced.NumberOfRequests);
                 }
             }
         }

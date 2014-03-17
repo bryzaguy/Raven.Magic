@@ -1,5 +1,6 @@
 ﻿namespace Raven.Magic.Client.RavenDocument
 {
+    using System;
     using Castle.Core.Internal;
     using Castle.DynamicProxy;
     using Raven.Client;
@@ -64,23 +65,29 @@
             return (T)entity.MapTo(proxy);
         }
 
-        public static object MapTo(this object entity, object proxy)
+        public static object MapTo(this object source, object target)
         {
-            foreach (var propertyInfo in entity.GetType().GetProperties())
-            {
-                if (propertyInfo.CanWrite)
-                    propertyInfo.SetValue(proxy, propertyInfo.GetValue(entity));
-            }
-            
-            foreach (var fieldInfo in entity.GetType().GetFields())
-            {
-                fieldInfo.SetValue(proxy, fieldInfo.GetValue(entity));
-            }
-
-            return proxy;
+            return source.MapTo(source.GetType(), target);
         }
 
-        private static ProxyGenerationOptions GetOptions(RavenDocument document)
+        public static object MapTo(this object source, Type targetType, object target)
+        {
+            foreach (var propertyInfo in targetType.GetProperties())
+            {
+                if (propertyInfo.CanWrite && !Equals(propertyInfo.GetValue(source),(propertyInfo.GetValue(target))))
+                    propertyInfo.SetValue(target, propertyInfo.GetValue(source));
+            }
+
+            foreach (var fieldInfo in targetType.GetFields())
+            {
+                if (!Equals(fieldInfo.GetValue(source), fieldInfo.GetValue(target)))
+                    fieldInfo.SetValue(target, fieldInfo.GetValue(source));
+            }
+
+            return target;
+        }
+
+        public static ProxyGenerationOptions GetOptions(RavenDocument document)
         {
             var options = new ProxyGenerationOptions();
             options.AddMixinInstance(document);

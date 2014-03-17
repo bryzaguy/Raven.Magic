@@ -204,9 +204,9 @@
             }
         }
 
-        private static MagicDocumentSession OpenSession(IDocumentStore store)
+        private static IDocumentSession OpenSession(IDocumentStore store)
         {
-            return new MagicDocumentSession(store.OpenSession());
+            return MagicDocumentSession.SetupDocumentStore(store.OpenSession());
         }
     }
 }

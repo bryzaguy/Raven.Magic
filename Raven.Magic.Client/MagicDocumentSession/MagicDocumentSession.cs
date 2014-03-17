@@ -17,11 +17,18 @@
     {
         private readonly IDocumentSession _session;
 
+        private readonly HashSet<object> _loadedObjects = new HashSet<object>();
+
         public MagicDocumentSession(IDocumentSession session)
+        {
+            _session = SetupDocumentStore(session);
+        }
+
+        public static IDocumentSession SetupDocumentStore(IDocumentSession session)
         {
             var conventions = session.Advanced.DocumentStore.Conventions;
             conventions.CustomizeJsonSerializer = CustomizeJsonSerializer(conventions.CustomizeJsonSerializer);
-            _session = session;
+            return session;
         }
 
         private static Action<JsonSerializer> CustomizeJsonSerializer(Action<JsonSerializer> customization)
@@ -40,6 +47,25 @@
             };
         }
 
+        private T AddObjectToLoadedObjects<T>(T value)
+        {
+            _loadedObjects.Add(value);
+            return value;
+        }
+
+        private T[] AddObjectsToLoadedObjects<T>(T[] values)
+        {
+            _loadedObjects.UnionWith(values.Cast<object>());
+            return values;
+        }
+
+        private static dynamic UpdatedTarget(object entity)
+        {
+            var target = (entity as dynamic).__target;
+            var result = RavenDocumentExtentions.MapTo(entity, target.GetType(), target);
+            return result;
+        }
+
         public void Dispose()
         {
             _session.Dispose();
@@ -52,32 +78,32 @@
 
         public T Load<T>(string id)
         {
-            return _session.Load<T>(id).Id(id);
+            return AddObjectToLoadedObjects(_session.Load<T>(id).Id(id));
         }
 
         public T[] Load<T>(params string[] ids)
         {
-            return _session.LoadIds(_session.Load<T>(ids));
+            return AddObjectsToLoadedObjects(_session.LoadIds(_session.Load<T>(ids)));
         }
 
         public T[] Load<T>(IEnumerable<string> ids)
         {
-            return _session.LoadIds(_session.Load<T>(ids));
+            return AddObjectsToLoadedObjects(_session.LoadIds(_session.Load<T>(ids)));
         }
 
         public T Load<T>(ValueType id)
         {
-            return _session.LoadId(_session.Load<T>(id));
+            return AddObjectToLoadedObjects(_session.LoadId(_session.Load<T>(id)));
         }
 
         public T[] Load<T>(params ValueType[] ids)
         {
-            return _session.LoadIds(_session.Load<T>(ids));
+            return AddObjectsToLoadedObjects(_session.LoadIds(_session.Load<T>(ids)));
         }
 
         public T[] Load<T>(IEnumerable<ValueType> ids)
         {
-            return _session.LoadIds(_session.Load<T>(ids));
+            return AddObjectToLoadedObjects(_session.LoadIds(_session.Load<T>(ids)));
         }
 
         public IRavenQueryable<T> Query<T>(string indexName, bool isMapReduce = false)
@@ -132,27 +158,55 @@
 
         public void SaveChanges()
         {
+            foreach (var entity in _loadedObjects)
+            {
+                if (entity is IRavenDocument)
+                {
+                    UpdatedTarget(entity);
+                }
+            }
+
             _session.SaveChanges();
         }
 
         public void Store(object entity, Etag etag)
         {
-            _session.Store(entity, etag);
+            if (entity is IRavenDocument)
+            {
+                _session.Store(UpdatedTarget(entity), etag, (entity as IRavenDocument).Id);
+            }
+            else
+                _session.Store(entity, etag);
         }
 
         public void Store(object entity, Etag etag, string id)
         {
-            _session.Store(entity, etag);
+            if (entity is IRavenDocument)
+            {
+                _session.Store(UpdatedTarget(entity), etag, id);
+            }
+            else
+                _session.Store(entity, etag, id);
         }
 
         public void Store(dynamic entity)
         {
-            _session.Store(entity);
+            if (entity is IRavenDocument)
+            {
+                _session.Store(UpdatedTarget(entity), (entity as IRavenDocument).Id);
+            }
+            else
+                _session.Store(entity);
         }
 
         public void Store(dynamic entity, string id)
         {
-            _session.Store(entity, id);
+            if (entity is IRavenDocument)
+            {
+                _session.Store(UpdatedTarget(entity), id);
+            }
+            else
+                _session.Store(entity, id);
         }
 
         public ISyncAdvancedSessionOperation Advanced
