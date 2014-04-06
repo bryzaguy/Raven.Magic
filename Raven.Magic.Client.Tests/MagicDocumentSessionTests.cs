@@ -2,11 +2,9 @@
 {
     using System.Collections.Generic;
     using System.Linq;
-    using Castle.DynamicProxy;
     using DocumentCollections;
     using MagicDocumentSession;
     using Raven.Client;
-    using Raven.Client.Connection.Async;
     using Raven.Tests.Helpers;
     using RavenDocument;
     using Xunit;
@@ -108,7 +106,95 @@
 
         // Create extension methods for IQueryable (e.g. First FirstOrDefault)
 
-        [Fact(Skip = "Not working yet.")]
+
+        [Fact]
+        public void Can_Automatically_Hydrate_Included_Properties_During_Load()
+        {
+            const string code = "awesome";
+            const string key = "animal";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(new Animal { Sounds = session.List(new[] { new AnimalSound() { Code = code } }) }, key);
+                    session.SaveChanges();
+                }
+
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var animal = session.Include<Animal>(a => a.Sounds).Load(key);
+                    Assert.Equal(code, animal.Sounds.First().Code);
+                }
+            }
+        }
+
+        [Fact]
+        public void Can_Automatically_Hydrate_Included_Properties_From_Embedded_Collections_During_Load()
+        {
+            const string code = "awesome";
+            const string key = "animal";
+            var sound = new Sound { Code = code };
+
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(sound);
+                    session.Store(new Animal { Sounds = new[] { new AnimalSound() { Sound = session.LoadId(sound) } } }, key);
+                    session.SaveChanges();
+                }
+
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var animal = session.Include<Animal>(a => a.Sounds.Select(b => b.Sound)).Load<Animal>(key);
+                    Assert.Equal(code, animal.Sounds.First().Sound.Code);
+                }
+            }
+        }
+
+        [Fact]
+        public void Can_Automatically_Hydrate_Included_Properties_From_Value_Objects_During_Load()
+        {
+            const string code = "awesome";
+            const string key = "pet";
+
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(new Pet() { Animal = new Animal { Sounds = session.List(new[] { new AnimalSound() { Code = code } }) } }, key);
+                    session.SaveChanges();
+                }
+
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var pet = session.Include<Pet>(a => a.Animal.Sounds).Load<Pet>(key);
+                    Assert.Equal(code, pet.Animal.Sounds.First().Code);
+                }
+            }
+        }
+
+        [Fact]
+        public void Can_Automatically_Hydrate_Included_Property_During_Load()
+        {
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(new Pet { Animal = session.Property(new Animal() { Name = "awesome" }) }, "pet");
+                    session.SaveChanges();
+                }
+
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var pet = session.Include<Pet>(a => a.Animal).Load<Pet>("pet");
+                    Assert.Equal("awesome", pet.Animal.Name);
+                }
+            }
+        }
+
+
+        [Fact]
         public void Can_Load_Entity_With_Property_That_Is_In_A_Separate_Document()
         {
             const string expected = "guyfox";
@@ -133,7 +219,7 @@
             return new MagicDocumentSession(store.OpenSession());
         }
 
-        [Fact(Skip = "Not working yet.")]
+        [Fact]
         public void When_Using_Include_In_A_Magic_Session_Load_The_Navigation_Property_Is_Loaded()
         {
             const string expected = "leg";

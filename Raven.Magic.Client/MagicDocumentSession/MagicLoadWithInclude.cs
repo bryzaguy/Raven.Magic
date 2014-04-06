@@ -4,27 +4,20 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Linq.Expressions;
+    using Abstractions.Extensions;
     using Raven.Client.Document;
     using RavenDocument;
 
     public class MagicLoadWithInclude<T> : ILoaderWithInclude<T>
     {
+        private readonly List<string> _includes = new List<string>();
         private readonly ILoaderWithInclude<T> _loader;
-        private readonly List<Expression<Func<T, object>>> _paths = new List<Expression<Func<T, object>>>();
+        private readonly LoadWithIncludeHelper _loaderHelper;
 
-        public MagicLoadWithInclude(ILoaderWithInclude<T> loader, Expression<Func<T, object>> path)
+        public MagicLoadWithInclude(LoadWithIncludeHelper loaderHelper, ILoaderWithInclude<T> loader)
         {
+            _loaderHelper = loaderHelper;
             _loader = loader;
-            _paths.Add(path);
-        }
-
-        private static TResult[] LoadIds<TResult>(TResult[] items, IList<string> ids)
-        {
-            for (int i = 0; i < items.Length; i++)
-            {
-                items[i] = items[i].Id(ids[i]);
-            }
-            return items;
         }
 
         public ILoaderWithInclude<T> Include(string path)
@@ -36,14 +29,14 @@
         public ILoaderWithInclude<T> Include(Expression<Func<T, object>> path)
         {
             _loader.Include(path);
-            _paths.Add(path);
+            _includes.Add(path.ToPropertyPath());
             return this;
         }
 
         public ILoaderWithInclude<T> Include<TInclude>(Expression<Func<T, object>> path)
         {
             _loader.Include<TInclude>(path);
-            _paths.Add(path);
+            _includes.Add(path.ToPropertyPath());
             return this;
         }
 
@@ -59,7 +52,7 @@
 
         public T Load(string id)
         {
-            return _loader.Load(id).Id(id);
+            return (T)_loaderHelper.Load(_loader.Load(id).Id(id), _includes.ToArray());
         }
 
         public T Load(ValueType id)
@@ -89,7 +82,7 @@
 
         public TResult Load<TResult>(string id)
         {
-            return _loader.Load<TResult>(id).Id(id);
+            return (TResult)_loaderHelper.Load(_loader.Load<TResult>(id).Id(id), _includes.ToArray());
         }
 
         public TResult Load<TResult>(ValueType id)
@@ -105,6 +98,15 @@
         public TResult[] Load<TResult>(IEnumerable<ValueType> ids)
         {
             return _loader.Load<TResult>(ids);
+        }
+
+        private static TResult[] LoadIds<TResult>(TResult[] items, IList<string> ids)
+        {
+            for (int i = 0; i < items.Length; i++)
+            {
+                items[i] = items[i].Id(ids[i]);
+            }
+            return items;
         }
     }
 }

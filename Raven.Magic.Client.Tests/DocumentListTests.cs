@@ -121,88 +121,19 @@
         }
 
         [Fact]
-        public void Can_Automatically_Hydrate_Included_Properties_During_Load()
+        public void Object_With_A_Document_List_Stores_Items_In_List_Into_Their_Own_Store()
         {
-            const string code = "awesome";
-            const string key = "animal";
-            using (IDocumentStore store = DocumentStore())
+            // Arrange
+            using (IDocumentSession session = DocumentStore().OpenSession())
             {
-                using (IDocumentSession session = OpenSession(store))
-                {
-                    session.Store(new Animal { Sounds = session.List(new[] { new AnimalSound() { Code = code } }) }, key);
-                    session.SaveChanges();
-                }
+                var animal = new Animal { Name = "Something", Sounds = session.List(new[] { new AnimalSound { Code = "Thing" } }) };
 
-                using (IDocumentSession session = OpenSession(store))
-                {
-                    var animal = session.LoadWithIncludes<Animal>(key, a => a.Sounds);
-                    Assert.Equal(code, animal.Sounds.First().Code);
-                }
-            }
-        }
+                // Act
+                session.Store(animal);
+                session.SaveChanges();
 
-        [Fact]
-        public void Can_Automatically_Hydrate_Included_Properties_From_Embedded_Collections_During_Load()
-        {
-            const string code = "awesome";
-            const string key = "animal";
-            var sound = new Sound { Code = code };
-
-            using (IDocumentStore store = DocumentStore())
-            {
-                using (IDocumentSession session = OpenSession(store))
-                {
-                    session.Store(sound);
-                    session.Store(new Animal { Sounds = new[] { new AnimalSound() { Sound = session.LoadId(sound) } } }, key);
-                    session.SaveChanges();
-                }
-
-                using (IDocumentSession session = OpenSession(store))
-                {
-                    var animal = session.LoadWithIncludes<Animal>(key, a => a.Sounds.Select(b => b.Sound));
-                    Assert.Equal(code, animal.Sounds.First().Sound.Code);
-                }
-            }
-        }
-
-        [Fact]
-        public void Can_Automatically_Hydrate_Included_Properties_From_Value_Objects_During_Load()
-        {
-            const string code = "awesome";
-            const string key = "pet";
-
-            using (IDocumentStore store = DocumentStore())
-            {
-                using (IDocumentSession session = OpenSession(store))
-                {
-                    session.Store(new Pet() { Animal = new Animal { Sounds = session.List(new[] { new AnimalSound() {Code = code}})}}, key);
-                    session.SaveChanges();
-                }
-
-                using (IDocumentSession session = OpenSession(store))
-                {
-                    var pet = session.LoadWithIncludes<Pet>(key, a => a.Animal.Sounds);
-                    Assert.Equal(code, pet.Animal.Sounds.First().Code);
-                }
-            }
-        }
-
-        [Fact]
-        public void Can_Automatically_Hydrate_Included_Property_During_Load()
-        {
-            using (IDocumentStore store = DocumentStore())
-            {
-                using (IDocumentSession session = OpenSession(store))
-                {
-                    session.Store(new Pet { Animal = session.Property(new Animal() { Name = "awesome" }) }, "pet");
-                    session.SaveChanges();
-                }
-
-                using (IDocumentSession session = OpenSession(store))
-                {
-                    var pet = session.LoadWithIncludes<Pet>("pet", a => a.Animal);
-                    Assert.Equal("awesome", pet.Animal.Name);
-                }
+                // Assert
+                Assert.True(session.Query<AnimalSound>().Customize(a => a.WaitForNonStaleResults()).Any(), "The animalsounds should be stored in its own document collection.");
             }
         }
 
@@ -235,23 +166,6 @@
         private static IDocumentSession OpenSession(IDocumentStore store)
         {
             return MagicDocumentSession.SetupDocumentStore(store.OpenSession());
-        }
-
-        [Fact]
-        public void Object_With_A_Document_List_Stores_Items_In_List_Into_Their_Own_Store()
-        {
-            // Arrange
-            using (IDocumentSession session = DocumentStore().OpenSession())
-            {
-                var animal = new Animal {Name = "Something", Sounds = session.List(new []{new AnimalSound {Code = "Thing"}})};
-
-                // Act
-                session.Store(animal);
-                session.SaveChanges();
-
-                // Assert
-                Assert.True(session.Query<AnimalSound>().Customize(a => a.WaitForNonStaleResults()).Any(), "The animalsounds should be stored in its own document collection.");
-            }
         }
     }
 }

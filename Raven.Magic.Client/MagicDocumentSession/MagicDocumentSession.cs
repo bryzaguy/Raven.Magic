@@ -13,7 +13,7 @@
     using Raven.Client.Linq;
     using RavenDocument;
 
-    public class MagicDocumentSession : IDocumentSession
+    public class MagicDocumentSession : IDocumentSession, IMagicDocumentSession
     {
         private readonly IDocumentSession _session;
 
@@ -108,32 +108,32 @@
 
         public IRavenQueryable<T> Query<T>(string indexName, bool isMapReduce = false)
         {
-            return _session.Query<T>(indexName, isMapReduce);
+            return new MagicRavenQueryInspector<T>(_session.Query<T>(indexName, isMapReduce), new LoadWithIncludeHelper(this));
         }
 
         public IRavenQueryable<T> Query<T>()
         {
-            return _session.Query<T>();
+            return new MagicRavenQueryInspector<T>(_session.Query<T>(), new LoadWithIncludeHelper(this));
         }
 
         public IRavenQueryable<T> Query<T, TIndexCreator>() where TIndexCreator : AbstractIndexCreationTask, new()
         {
-            return _session.Query<T, TIndexCreator>();
+            return new MagicRavenQueryInspector<T>(_session.Query<T, TIndexCreator>(), new LoadWithIncludeHelper(this));
         }
 
         public ILoaderWithInclude<object> Include(string path)
         {
-            return _session.Include(path);
+            return new MagicLoadWithInclude<object>(new LoadWithIncludeHelper(this), _session.Include(path)).Include(path);
         }
 
         public ILoaderWithInclude<T> Include<T>(Expression<Func<T, object>> path)
         {
-            return new MagicLoadWithInclude<T>(_session.Include(path), path);
+            return new MagicLoadWithInclude<T>(new LoadWithIncludeHelper(this), _session.Include(path)).Include(path);
         }
 
         public ILoaderWithInclude<T> Include<T, TInclude>(Expression<Func<T, object>> path)
         {
-            return new MagicLoadWithInclude<T>(_session.Include<T, TInclude>(path), path);
+            return new MagicLoadWithInclude<T>(new LoadWithIncludeHelper(this), _session.Include(path)).Include(path);
         }
 
         public TResult Load<TTransformer, TResult>(string id) where TTransformer : AbstractTransformerCreationTask, new()
@@ -213,5 +213,9 @@
         {
             get { return _session.Advanced; }
         }
+    }
+
+    public interface IMagicDocumentSession
+    {
     }
 }

@@ -54,8 +54,12 @@
     <Compile Include="DocumentCollections\DocumentCollectionExtentions.cs" />
     <Compile Include="DocumentCollections\DocumentList.cs" />
     <Compile Include="DocumentCollections\DocumentSet.cs" />
+    <Compile Include="MagicDocumentSession\LoadWithIncludeHelper.cs" />
     <Compile Include="MagicDocumentSession\MagicDocumentSession.cs" />
     <Compile Include="MagicDocumentSession\MagicLoadWithInclude.cs" />
+    <Compile Include="MagicDocumentSession\MagicRavenQueryExtensions.cs" />
+    <Compile Include="MagicDocumentSession\MagicRavenQueryInspector.cs" />
+    <Compile Include="MagicDocumentSession\QueryIncludesParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RavenDocument\RavenDocument.cs" />
     <Compile Include="RavenDocument\RavenDocumentConverter.cs" />
