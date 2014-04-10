@@ -19,7 +19,7 @@
         public object Load(object entity, params string[] includes)
         {
             includes.ToList().ForEach(a => Load(entity, a.Split('.'), 0));
-            return entity;
+            return _session.LoadId(entity);
         }
 
         private void Load(object entity, string[] properties, int index)

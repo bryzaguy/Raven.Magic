@@ -227,7 +227,7 @@
             {
                 using (IDocumentSession session = OpenSession(store))
                 {
-                    session.Store(new Person {Limbs = session.List(new[] {new Limb {Name = expected}})});
+                    session.Store(new Person { Limbs = session.List(new[] { new Limb { Name = expected } }) });
                     session.SaveChanges();
                 }
 
@@ -235,6 +235,28 @@
                 {
                     Person person = session.Query<Person>().Include<Person>(a => a.Limbs).Customize(a => a.WaitForNonStaleResults()).First();
                     Assert.Equal(expected, person.Limbs.First().Name);
+                }
+            }
+        }
+
+        [Fact]
+        public void Loaded_Item_Stores_To_Existing_Item_Key_When_It_Is_A_Proxy_Object()
+        {
+            const string id = "thisiddude";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                Person person;
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(new Person {Name = "STUFSS"}, id);
+                    session.SaveChanges();
+                    person = session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).First();
+                }
+
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(person);
+                    Assert.Equal(id, session.GetId(person));
                 }
             }
         }
