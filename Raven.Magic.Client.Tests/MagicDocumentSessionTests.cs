@@ -240,23 +240,46 @@
         }
 
         [Fact]
-        public void Loaded_Item_Stores_To_Existing_Item_Key_When_It_Is_A_Proxy_Object()
+        public void Query_With_Where_Should_Return_Proxy_Objects()
         {
-            const string id = "thisiddude";
+            const string id = "thisiddude", name = "STUFSS";
             using (IDocumentStore store = NewDocumentStore())
             {
-                Person person;
                 using (IDocumentSession session = OpenSession(store))
                 {
-                    session.Store(new Person {Name = "STUFSS"}, id);
+                    session.Store(new Person { Name = name }, id);
                     session.SaveChanges();
-                    person = session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).First();
+                    Assert.NotNull(session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).Where(a => a.Name == name).ToList().First().Id());
                 }
+            }
+        }
 
+        [Fact]
+        public void Query_First_Should_Return_Proxy_Objects()
+        {
+            const string id = "thisiddude", name = "STUFSS";
+            using (IDocumentStore store = NewDocumentStore())
+            {
                 using (IDocumentSession session = OpenSession(store))
                 {
-                    session.Store(person);
-                    Assert.Equal(id, session.GetId(person));
+                    session.Store(new Person { Name = name }, id);
+                    session.SaveChanges();
+                    Assert.NotNull(session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).First(a => a.Name == name).Id());
+                }
+            }
+        }
+
+        [Fact]
+        public void Query_Should_Return_Proxy_Object()
+        {
+            const string id = "thisiddude", name = "STUFSS";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(new Person { Name = name }, id);
+                    session.SaveChanges();
+                    Assert.NotNull(session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).ToList().First().Id());
                 }
             }
         }

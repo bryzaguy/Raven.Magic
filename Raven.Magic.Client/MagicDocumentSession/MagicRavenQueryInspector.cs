@@ -14,8 +14,8 @@
     public class MagicRavenQueryInspector<T> : IRavenQueryable<T>
     {
         private readonly IRavenQueryable<T> _inspector;
-        private readonly LoadWithIncludeHelper _loadHelper;
-        private readonly QueryIncludesParser _parser;
+        public readonly LoadWithIncludeHelper LoadHelper;
+        public readonly QueryIncludesParser Parser;
 
         public MagicRavenQueryInspector(IRavenQueryable<T> inspector, LoadWithIncludeHelper loadHelper) : this(inspector, loadHelper, new QueryIncludesParser())
         {
@@ -24,8 +24,8 @@
         public MagicRavenQueryInspector(IRavenQueryable<T> inspector, LoadWithIncludeHelper loadHelper, QueryIncludesParser parser)
         {
             _inspector = inspector;
-            _loadHelper = loadHelper;
-            _parser = parser;
+            LoadHelper = loadHelper;
+            Parser = parser;
         }
 
         public IEnumerator<T> GetEnumerator()
@@ -61,14 +61,14 @@
 
         public IRavenQueryable<T> Customize(Action<IDocumentQueryCustomization> action)
         {
-            action(_parser);
+            action(Parser);
             _inspector.Customize(action);
             return this;
         }
 
         public IRavenQueryable<TResult> TransformWith<TTransformer, TResult>() where TTransformer : AbstractTransformerCreationTask, new()
         {
-            return new MagicRavenQueryInspector<TResult>(_inspector.TransformWith<TTransformer, TResult>(), _loadHelper, _parser);
+            return new MagicRavenQueryInspector<TResult>(_inspector.TransformWith<TTransformer, TResult>(), LoadHelper, Parser);
         }
 
         public IRavenQueryable<T> AddQueryInput(string name, RavenJToken value)
@@ -85,7 +85,7 @@
 
         public T LoadWithIncludes(T entity)
         {
-            return (T)_loadHelper.Load(entity, _parser.Includes.ToArray());
+            return (T)LoadHelper.Load(entity, Parser.Includes.ToArray());
         }
     }
 }
