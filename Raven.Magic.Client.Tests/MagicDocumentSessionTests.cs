@@ -100,13 +100,6 @@
             }
         }
 
-        // Figure out a way to do includes in magic session since we can't overload MultiIncludeWithLoader.
-
-        // Consider having iincludewithloader interface return interface instead of concrete types.
-
-        // Create extension methods for IQueryable (e.g. First FirstOrDefault)
-
-
         [Fact]
         public void Can_Automatically_Hydrate_Included_Properties_During_Load()
         {
