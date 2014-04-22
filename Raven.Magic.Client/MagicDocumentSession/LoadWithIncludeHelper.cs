@@ -1,6 +1,7 @@
 ﻿namespace Raven.Magic.Client.MagicDocumentSession
 {
     using System.Collections;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
     using DocumentCollections;
@@ -53,8 +54,21 @@
         private void Load(object entity, PropertyInfo propertyInfo)
         {
             object property = propertyInfo.GetValue(entity);
+            
+            if (propertyInfo.PropertyType.IsArray && property is IEnumerable)
+            {
+                dynamic array = property;
+                for (var i = 0; i < array.Length; i++)
+                {
+                    var id = RavenDocumentExtentions.Id(array[i]);
 
-            if (property is IEnumerable)
+                    if (id != null)
+                    {
+                        array[i] = _session.Load<object>(id);
+                    }
+                }
+            }
+            else if (property is IEnumerable)
             {
                 MethodInfo listMethod = typeof (DocumentCollectionExtentions).GetMethods().Single(a => a.Name == "List" && a.GetParameters().Count() == 2);
                 propertyInfo.SetValue(entity, listMethod.MakeGenericMethod(propertyInfo.PropertyType.GetGenericArguments()).Invoke(null, new[] {_session, property}));
