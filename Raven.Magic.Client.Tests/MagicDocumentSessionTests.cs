@@ -2,6 +2,7 @@
 {
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text;
     using DocumentCollections;
     using MagicDocumentSession;
     using Raven.Client;
@@ -246,7 +247,7 @@
                 }
             }
         }
-
+        
         [Fact]
         public void Query_First_Should_Return_Proxy_Objects()
         {
@@ -258,6 +259,22 @@
                     session.Store(new Person { Name = name }, id);
                     session.SaveChanges();
                     Assert.NotNull(session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).First(a => a.Name == name).Id());
+                }
+            }
+        }
+
+        [Fact]
+        public void Query_Can_Include_Deep_Object_Graph_References()
+        {
+            const string id = "thisiddude", name = "STUFSS";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var show = new Shows {Crowds = new[] {new Crowd {People = session.List(new[] {new Person {Name = name}}).ToArray()}}};
+                    session.Store(show, id);
+                    session.SaveChanges();
+                    Assert.NotNull(session.Query<Shows>().Include(a => a.Crowds.Select(b => b.People)).Customize(a => a.WaitForNonStaleResults()).FirstOrDefault());
                 }
             }
         }
@@ -276,10 +293,20 @@
                 }
             }
         }
-
+        
         public class Idea
         {
             public Person Person { get; set; }
+        }
+        
+        public class Crowd
+        {
+            public Person[] People { get; set; }
+        }
+
+        public class Shows
+        {
+            public IEnumerable<Crowd> Crowds { get; set; }
         }
 
         public class Limb

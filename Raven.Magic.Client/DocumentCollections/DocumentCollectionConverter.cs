@@ -1,19 +1,18 @@
 ﻿namespace Raven.Magic.Client.DocumentCollections
 {
     using System;
-    using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
-    using Castle.Core.Internal;
     using Imports.Newtonsoft.Json;
     using Imports.Newtonsoft.Json.Linq;
-    using RavenDocument;
 
     public class DocumentCollectionConverter : JsonConverter
     {
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
-            serializer.Serialize(writer, (value as IEnumerable).Cast<IRavenDocument>().ToArray().ConvertAll(a => a.Id));
+            if (value is IDocumentCollection)
+            {
+                serializer.Serialize(writer, (value as IDocumentCollection).Keys);
+            }
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
@@ -23,7 +22,7 @@
 
         public override bool CanConvert(Type objectType)
         {
-            return objectType.BaseType != null && objectType.BaseType.IsGenericType && objectType.BaseType.GetGenericTypeDefinition() == typeof (DocumentCollection<>);
+            return objectType.GetInterface(typeof (IDocumentCollection).FullName) != null;
         }
     }
 }

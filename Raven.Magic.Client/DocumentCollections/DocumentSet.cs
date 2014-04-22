@@ -22,7 +22,7 @@
             _keys = keys;
         }
 
-        protected override ICollection<string> Keys
+        public override ICollection<string> Keys
         {
             get { return _keys; }
         }

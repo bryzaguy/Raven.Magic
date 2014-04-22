@@ -118,7 +118,6 @@
     <Compile Include="MagicDocumentSessionTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RavenDocumentTests.cs" />
-    <Compile Include="RavenTests\CanCallLastOnArray.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Raven.Magic.Client\Raven.Magic.Client.csproj">

@@ -50,7 +50,7 @@
             session.SetupGet(a => a.Advanced).Returns(operations.Object);
             return session;
         }
-
+        
         [Fact]
         public void Session_List_Stores_Returns_Document_List()
         {
@@ -62,6 +62,20 @@
 
             // Assert
             Assert.IsAssignableFrom<DocumentList<Animal>>(animalsounds);
+        }
+
+        [Fact]
+        public void Session_List_ToArray_Contains_Items()
+        {
+            // Arrange
+            using (var session = DocumentStore().OpenSession())
+            {
+                // Act
+                var result = session.List(new[] {new AnimalSound {Code = "testsound"}, new AnimalSound {Code = "testsound2"}});
+
+                // Assert
+                Assert.NotNull(result.ToArray().First());
+            }
         }
 
         [Fact]

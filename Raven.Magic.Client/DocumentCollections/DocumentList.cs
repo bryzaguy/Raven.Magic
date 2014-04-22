@@ -21,7 +21,7 @@
         {
         }
 
-        protected override ICollection<string> Keys
+        public override ICollection<string> Keys
         {
             get { return _keys; }
         }
@@ -33,6 +33,7 @@
 
         public void Insert(int index, T item)
         {
+            StoreIfNew(item);
             _keys.Insert(index, GetId(item));
         }
 

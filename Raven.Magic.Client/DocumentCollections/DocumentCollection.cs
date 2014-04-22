@@ -3,11 +3,10 @@
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
-    using Castle.Core.Internal;
     using Raven.Client;
     using RavenDocument;
 
-    public abstract class DocumentCollection<T> : ICollection<T> where T : class
+    public abstract class DocumentCollection<T> : ICollection<T>, IDocumentCollection where T : class
     {
         protected IDocumentSession _session;
 
@@ -25,7 +24,7 @@
             return _session.GetId(item);
         }
 
-        protected abstract ICollection<string> Keys { get; }
+        public abstract ICollection<string> Keys { get; }
 
         public IEnumerator<T> GetEnumerator()
         {
@@ -61,7 +60,7 @@
 
         public void CopyTo(T[] array, int arrayIndex)
         {
-            Keys.CopyTo(array.ConvertAll(a => _session.GetId(a)), arrayIndex);
+            array[arrayIndex] = _session.Load<T>(Keys.ElementAt(arrayIndex));
         }
 
         public bool Remove(T item)
@@ -83,5 +82,10 @@
         {
             _session = session;
         }
+    }
+
+    public interface IDocumentCollection
+    {
+        ICollection<string> Keys { get; }
     }
 }
