@@ -38,7 +38,7 @@
         {
             var inspector = _provider.CreateQuery<TElement>(expression);
             
-            typeof(RavenQueryInspector<T>)
+            typeof(RavenQueryInspector<TElement>)
                 .GetField("provider", BindingFlags.Instance|BindingFlags.NonPublic)
                 .SetValue(inspector, For<TElement>());
 
