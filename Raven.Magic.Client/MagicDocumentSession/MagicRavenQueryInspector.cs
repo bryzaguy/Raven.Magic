@@ -50,7 +50,7 @@
 
         public IQueryProvider Provider
         {
-            get { return _inspector.Provider; }
+            get { return new MagicRavenQueryProvider<T>(_inspector.Provider as IRavenQueryProvider, LoadHelper, Parser); }
         }
 
         public IRavenQueryable<T> Statistics(out RavenQueryStatistics stats)

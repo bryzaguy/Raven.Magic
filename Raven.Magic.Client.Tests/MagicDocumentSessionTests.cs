@@ -242,7 +242,7 @@
                 {
                     session.Store(new Person { Name = name }, id);
                     session.SaveChanges();
-                    Assert.NotNull(session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).Where(a => a.Name == name).ToList().First().Id());
+                    Assert.NotNull(session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).Where(a => a.Name == name).Take(1).Skip(0).ToList().First().Id());
                 }
             }
         }

@@ -8,9 +8,9 @@
 
     public static class MagicRavenQueryExtensions
     {
-        public static IList<T> ToList<T>(this IRavenQueryable<T> query)
+        public static IList<T> ToList<T>(this IQueryable<T> query)
         {
-            return Execute(query, (query as IQueryable<T>).ToList(), (q, list) => list.ConvertAll(q.LoadWithIncludes));
+            return Execute(query, (query as IEnumerable<T>).ToList(), (q, list) => list.ConvertAll(q.LoadWithIncludes));
         }
 
         public static T First<T>(this IRavenQueryable<T> query)
@@ -121,13 +121,23 @@
             return (query as IQueryable<T>).SelectMany(collectionSelector, resultSelector) as IRavenQueryable<T>;
         } 
          */
+        
+        //public static IRavenQueryable<T> Take<T>(this IRavenQueryable<T> query, int count)
+        //{
+        //    return query.AsMagicQuery(a => a.Take(count));
+        //}
 
-        private static T OneResult<T>(this IRavenQueryable<T> query, T result)
+        //public static IRavenQueryable<T> Skip<T>(this IRavenQueryable<T> query, int count)
+        //{
+        //    return query.AsMagicQuery(a => a.Skip(count));
+        //}
+
+        private static T OneResult<T>(this IEnumerable<T> query, T result)
         {
             return Execute(query, result, (q, item) => q.LoadWithIncludes(item));
         }
 
-        public static TResult Execute<TResult, T>(IRavenQueryable<T> query, TResult result, Func<MagicRavenQueryInspector<T>, TResult, TResult> loader)
+        public static TResult Execute<TResult, T>(IEnumerable<T> query, TResult result, Func<MagicRavenQueryInspector<T>, TResult, TResult> loader)
         {
             var magicRavenQueryInspector = query as MagicRavenQueryInspector<T>;
             if (magicRavenQueryInspector != null)
