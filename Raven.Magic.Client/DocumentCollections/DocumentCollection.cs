@@ -60,7 +60,10 @@
 
         public void CopyTo(T[] array, int arrayIndex)
         {
-            array[arrayIndex] = _session.Load<T>(Keys.ElementAt(arrayIndex));
+            for (var i = arrayIndex; i < array.Length; i++)
+            {
+                array[i] = _session.Load<T>(Keys.ElementAt(i));
+            }
         }
 
         public bool Remove(T item)

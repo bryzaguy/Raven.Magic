@@ -63,7 +63,7 @@
             // Assert
             Assert.IsAssignableFrom<DocumentList<Animal>>(animalsounds);
         }
-
+        
         [Fact]
         public void Session_List_ToArray_Contains_Items()
         {
@@ -75,6 +75,7 @@
 
                 // Assert
                 Assert.NotNull(result.ToArray().First());
+                Assert.NotNull(result.ToArray().Last());
             }
         }
 
@@ -118,7 +119,7 @@
                 Assert.IsAssignableFrom<DocumentList<Animal>>(result);
             }
         }
-
+        
         [Fact]
         public void Document_List_Can_Add_Items()
         {

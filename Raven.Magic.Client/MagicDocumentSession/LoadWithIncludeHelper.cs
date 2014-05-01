@@ -1,7 +1,6 @@
 ﻿namespace Raven.Magic.Client.MagicDocumentSession
 {
     using System.Collections;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
     using DocumentCollections;
@@ -19,34 +18,33 @@
 
         public object Load(object entity, params string[] includes)
         {
-            includes.ToList().ForEach(a => Load(entity, a.Split('.'), 0));
+            includes.ToList().ForEach(a => Load(entity, a.Split('.'), false));
             return _session.LoadId(entity);
         }
 
-        private void Load(object entity, string[] properties, int index)
+        private void Load(object entity, string[] properties, bool isCollection)
         {
-            if (entity == null)
+            if (entity == null || !properties.Any())
                 return;
 
-            if (properties[index].StartsWith(","))
+            if (!isCollection && properties[0].StartsWith(","))
             {
-                properties[index] = properties[index].Remove(0, 1);
                 foreach (object item in entity as IEnumerable)
                 {
-                    Load(item, properties, index);
+                    Load(item, properties, true);
                 }
             }
             else
             {
-                PropertyInfo propertyInfo = entity.GetType().GetProperty(properties[index]);
+                var propertyInfo = entity.GetType().GetProperty(isCollection ? properties[0].Remove(0, 1) : properties[0]);
 
-                if (properties.Count() == index + 1)
+                if (properties.Count() == 1)
                 {
                     Load(entity, propertyInfo);
                 }
                 else
                 {
-                    Load(propertyInfo.GetValue(entity), properties, ++index);
+                    Load(propertyInfo.GetValue(entity), properties.Skip(1).ToArray(), false);
                 }
             }
         }

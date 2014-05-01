@@ -261,7 +261,7 @@
                 }
             }
         }
-
+        
         [Fact]
         public void Query_Can_Include_Deep_Object_Graph_References()
         {
@@ -271,6 +271,30 @@
                 using (IDocumentSession session = OpenSession(store))
                 {
                     var show = new Shows {Crowds = new[] {new Crowd {People = session.List(new[] {new Person {Name = name}}).ToArray()}}};
+                    session.Store(show, id);
+                    session.SaveChanges();
+                    Assert.NotNull(session.Query<Shows>().Include(a => a.Crowds.Select(b => b.People)).Customize(a => a.WaitForNonStaleResults()).FirstOrDefault());
+                }
+            }
+        }
+
+        [Fact]
+        public void Query_Can_Include_Multiple_Deep_Object_Graph_References()
+        {
+            const string id = "thisiddude", name = "STUFSS";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var show = new Shows 
+                    {
+                        Crowds = new[] 
+                        {
+                            new Crowd {People = session.List(new[] {new Person {Name = name}, new Person {Name = name}}).ToArray()},
+                            new Crowd {People = session.List(new[] {new Person {Name = name}, new Person {Name = name}}).ToArray()}
+                        }
+                    };
+
                     session.Store(show, id);
                     session.SaveChanges();
                     Assert.NotNull(session.Query<Shows>().Include(a => a.Crowds.Select(b => b.People)).Customize(a => a.WaitForNonStaleResults()).FirstOrDefault());
