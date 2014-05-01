@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Linq.Expressions;
+    using System.Reflection;
     using Abstractions.Data;
     using Json.Linq;
     using Raven.Client;
@@ -24,12 +25,24 @@
 
         public IQueryable CreateQuery(Expression expression)
         {
-            return new MagicRavenQueryInspector<T>(_provider.CreateQuery(expression) as IRavenQueryable<T>, LoadHelper, Parser);
+            var inspector = _provider.CreateQuery(expression);
+            
+            typeof(RavenQueryInspector<T>)
+                .GetField("provider", BindingFlags.Instance|BindingFlags.NonPublic)
+                .SetValue(inspector, this);
+
+            return inspector;
         }
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
         {
-            return new MagicRavenQueryInspector<TElement>(_provider.CreateQuery<TElement>(expression) as IRavenQueryable<TElement>, LoadHelper, Parser);
+            var inspector = _provider.CreateQuery<TElement>(expression);
+            
+            typeof(RavenQueryInspector<T>)
+                .GetField("provider", BindingFlags.Instance|BindingFlags.NonPublic)
+                .SetValue(inspector, For<TElement>());
+
+            return inspector;
         }
 
         public object Execute(Expression expression)
@@ -49,6 +62,7 @@
 
         public void Customize(Action<IDocumentQueryCustomization> action)
         {
+            action(Parser);
             _provider.Customize(action);
         }
 

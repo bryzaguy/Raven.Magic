@@ -5,6 +5,7 @@
     using DocumentCollections;
     using MagicDocumentSession;
     using Raven.Client;
+    using Raven.Client.Indexes;
     using Raven.Tests.Helpers;
     using RavenDocument;
     using Xunit;
@@ -242,7 +243,9 @@
                 {
                     session.Store(new Person { Name = name }, id);
                     session.SaveChanges();
-                    Assert.NotNull(session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).Where(a => a.Name == name).Take(1).Skip(0).ToList().First().Id());
+
+                    var result = session.Query<Person>().Customize(a => a.WaitForNonStaleResults()).Where(a => a.Name == name).Take(1).Skip(0).ToList();
+                    Assert.NotNull(result.First().Id());
                 }
             }
         }
@@ -277,6 +280,59 @@
                 }
             }
         }
+
+        public class TestIndex : AbstractIndexCreationTask<Shows, TestIndex.Result> 
+        {
+            public class Result
+            {
+                public bool IsReduced { get; set; }
+            }
+
+            public TestIndex()
+            {
+                Map = shows => from show in shows
+                               select new { IsReduced = true };
+            }
+        }
+
+        [Fact]
+        public void Able_To_Project_From_Index() 
+        {
+            using (var store = NewDocumentStore())
+            {
+                store.ExecuteIndex(new TestIndex());
+
+                using (var session = OpenSession(store))
+                {
+                    session.Store(new Shows());
+                    session.SaveChanges();
+                    Assert.NotEmpty(session.Query<TestIndex.Result, TestIndex>()
+                        .Customize(a => a.WaitForNonStaleResults())
+                        .ProjectFromIndexFieldsInto<TestIndex.Result>()
+                        .ToList());
+                }
+            }
+        }
+        
+        [Fact]
+        public void Query_To_List_Includes_References()
+        {
+            const string name = "thistest";
+            using (var store = NewDocumentStore())
+            {
+                using (var session = OpenSession(store))
+                {
+                    session.Store(new Person {Limbs = session.List(new[] {new Limb {Name = name}})});
+                    session.SaveChanges();
+
+                    Assert.Equal(name, session.Query<Person>()
+                        .Include(a => a.Limbs)
+                        .Customize(a => a.WaitForNonStaleResults())
+                        .First().Limbs.First().Name);
+                }
+            }
+        }
+
 
         [Fact]
         public void Query_Can_Include_Multiple_Deep_Object_Graph_References()

@@ -58,7 +58,6 @@
     <Compile Include="MagicDocumentSession\MagicDocumentSession.cs" />
     <Compile Include="MagicDocumentSession\MagicLoadWithInclude.cs" />
     <Compile Include="MagicDocumentSession\MagicRavenQueryExtensions.cs" />
-    <Compile Include="MagicDocumentSession\MagicRavenQueryInspector.cs" />
     <Compile Include="MagicDocumentSession\MagicRavenQueryProvider.cs" />
     <Compile Include="MagicDocumentSession\QueryIncludesParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
