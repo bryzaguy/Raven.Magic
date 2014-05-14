@@ -8,14 +8,13 @@
     using Abstractions.Data;
     using DocumentCollections;
     using Imports.Newtonsoft.Json;
-    using Imports.Newtonsoft.Json.Utilities;
     using Raven.Client;
     using Raven.Client.Document;
     using Raven.Client.Indexes;
     using Raven.Client.Linq;
     using RavenDocument;
 
-    public class MagicDocumentSession : IDocumentSession, IDocumentQueryGenerator, IMagicDocumentSession
+    public class MagicDocumentSession : IDocumentSession, IMagicDocumentSession
     {
         private readonly IDocumentSession _session;
 
@@ -226,20 +225,6 @@
         public ISyncAdvancedSessionOperation Advanced
         {
             get { return _session.Advanced; }
-        }
-        
-        public IAsyncDocumentQuery<T> AsyncQuery<T>(string indexName, bool isMapReduce)
-        {
-            throw new NotImplementedException();
-        }
-
-        public DocumentConvention Conventions {
-            get { return (_session as IDocumentQueryGenerator).Conventions; }
-        }
-
-        IDocumentQuery<T> IDocumentQueryGenerator.Query<T>(string indexName, bool isMapReduce)
-        {
-            return (_session as IDocumentQueryGenerator).Query<T>(indexName, isMapReduce);
         }
     }
 

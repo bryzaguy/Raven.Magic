@@ -62,7 +62,9 @@
 
                     if (id != null)
                     {
-                        array[i] = _session.Load<object>(id);
+                        var result = _session.Load<object>(id);
+                        if (result != null)
+                            array[i] = _session.Load<object>(id);
                     }
                 }
             }
@@ -73,7 +75,9 @@
             }
             else if (property.Id() != null)
             {
-                propertyInfo.SetValue(entity, _session.Load<object>(property.Id()));
+                var result = _session.Load<object>(property.Id());
+                if (result != null)
+                    propertyInfo.SetValue(entity, result);
             }
         }
     }

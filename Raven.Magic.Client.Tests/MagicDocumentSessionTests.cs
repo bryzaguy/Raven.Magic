@@ -266,6 +266,60 @@
         }
         
         [Fact]
+        public void Query_Include_Should_Ignore_Embedded_Objects()
+        {
+            const string name = "STUFSS";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var show = new Limb {BelongsTo = new Person {Name = name}};
+                    session.Store(show);
+                    session.SaveChanges();
+
+                    var result = session.Query<Limb>()
+                        .Include(a => a.BelongsTo)
+                        .Customize(a => a.WaitForNonStaleResults())
+                        .ToList();
+
+                    Assert.NotNull(result.Select(a => a.BelongsTo).SingleOrDefault(a => a.Id() == null && a.Name == name));
+                }
+            }
+        }
+        
+        [Fact]
+        public void When_Query_Include_Is_Null_Leaves_Proxy_Object()
+        {
+            const string id = "thisiddude", testId = "thissweetidyo";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var limb = new Limb { BelongsTo = new Person().Id(testId)};
+                    session.Store(limb, id);
+                    session.SaveChanges();
+                    Assert.NotNull(session.Query<Limb>().Include<Limb>(a => a.BelongsTo).Customize(a =>a.WaitForNonStaleResults()).First().BelongsTo);
+                }
+            }
+        }
+
+        [Fact]
+        public void When_Load_Include_Is_Null_Leaves_Proxy_Object()
+        {
+            const string id = "thisiddude", testId = "thissweetidyo";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var limb = new Limb { BelongsTo = new Person().Id(testId)};
+                    session.Store(limb, id);
+                    session.SaveChanges();
+                    Assert.NotNull(session.Include<Limb>(a => a.BelongsTo).Load<Limb>(id).BelongsTo);
+                }
+            }
+        }
+
+        [Fact]
         public void Query_Can_Include_Deep_Object_Graph_References()
         {
             const string id = "thisiddude", name = "STUFSS";
@@ -390,6 +444,7 @@
 
         public class Limb
         {
+            public Person BelongsTo { get; set; }
             public string Name { get; set; }
         }
 
