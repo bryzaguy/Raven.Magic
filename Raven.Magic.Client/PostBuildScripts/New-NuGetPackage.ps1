@@ -93,10 +93,11 @@
 	This assumes that you are currently in the same directory as the New-NuGetPackage.ps1 script, since a relative path is supplied.
 
 	.EXAMPLE
-	& "C:\Some Folder\New-NuGetPackage.ps1" -NuSpecFilePath ".\Some Folder\SomeNuSpecFile.nuspec"
+	& "C:\Some Folder\New-NuGetPackage.ps1" -NuSpecFilePath ".\Some Folder\SomeNuSpecFile.nuspec" -Verbose
 
 	Create a new package from the SomeNuSpecFile.nuspec file.
 	This can be ran from any directory since an absolute path to the New-NuGetPackage.ps1 script is supplied.
+	Additional information will be displayed about the operations being performed because the -Verbose switch was supplied.
 	
 	.EXAMPLE
 	& .\New-NuGetPackage.ps1 -ProjectFilePath "C:\Some Folder\TestProject.csproj" -VersionNumber "1.1" -ReleaseNotes "Version 1.1 contains many bug fixes."
@@ -143,12 +144,17 @@
 	Create a new package or push an existing package by auto-finding the .nuspec, project, or .nupkg file to use, and prompting for one if none are found.
 	Will not prompt the user for input before exitting the script when an error occurs.
 
+	.OUTPUTS
+	Returns the full path to the NuGet package that was created.
+	If a NuGet package was not required to be created (e.g. you were just pushing an existing package), then nothing is returned.
+	Use the -Verbose switch to see more detailed information about the operations performed.
+	
 	.LINK
 	Project home: https://newnugetpackage.codeplex.com
 
 	.NOTES
 	Author: Daniel Schroeder
-	Version: 1.4.1
+	Version: 1.5.0
 	
 	This script is designed to be called from PowerShell or ran directly from Windows Explorer.
 	If this script is ran without the $NuSpecFilePath, $ProjectFilePath, and $PackageFilePath parameters, it will automatically search for a .nuspec, project, or package file in the 
@@ -288,7 +294,7 @@ $TF_EXE_NO_PENDING_CHANGES_MESSAGE = 'There are no pending changes.'
 $TF_EXE_KEYWORD_IN_PENDING_CHANGES_MESSAGE = 'change\(s\)'	# Escape regular expression characters.
 
 # NuGet.exe output strings.
-$NUGET_EXE_SUCCESSFULLY_CREATED_PACKAGE_MESSAGE = 'Successfully created package'
+$NUGET_EXE_SUCCESSFULLY_CREATED_PACKAGE_MESSAGE_REGEX = [regex] "(?i)(Successfully created package '(?<FilePath>.*?)'.)"
 $NUGET_EXE_SUCCESSFULLY_PUSHED_PACKAGE_MESSAGE = 'Your package was pushed.'
 $NUGET_EXE_SUCCESSFULLY_SAVED_API_KEY_MESSAGE = "The API Key '{0}' was saved for '{1}'."
 $NUGET_EXE_SUCCESSFULLY_UPDATED_TO_NEW_VERSION = "Update successful."
@@ -332,8 +338,7 @@ function String-IsNullOrWhitespace([string] $string)
 
 # Function to update the $NuSpecFilePath (.nuspec file) with the appropriate information before using it to create the NuGet package.
 function Update-NuSpecFile
-{	
-
+{
     # If we dont' have a NuSpec file to update, throw an error that something went wrong.
     if (!(Test-Path $NuSpecFilePath))
     {
@@ -353,12 +358,12 @@ function Update-NuSpecFile
 		Copy-Item -Path $NuSpecFilePath -Destination (Get-NuSpecBackupFilePath) -Force
 	}
 
+	# Get the current version number from the .nuspec file.
+	$currentVersionNumber = Get-NuSpecVersionNumber -NuSpecFilePath $NuSpecFilePath
+
 	# If an explicit Version Number was not provided, prompt for it.
 	if (String-IsNullOrWhitespace $VersionNumber)
 	{
-		# Get the current version number from the .nuspec file.
-		$currentVersionNumber = Get-NuSpecVersionNumber -NuSpecFilePath $NuSpecFilePath
-
 		# If we shouldn't prompt for a version number, just use the existing one from the NuSpec file (if it exists).
 		if ($NoPromptForVersionNumber)
 		{
@@ -392,15 +397,18 @@ function Update-NuSpecFile
 		}
 	}
 	
-	# Insert the given version number into the .nuspec file.
-	Set-NuSpecVersionNumber -NuSpecFilePath $NuSpecFilePath -NewVersionNumber $VersionNumber
+	# Insert the given version number into the .nuspec file, if it is different.
+	if ($currentVersionNumber -ne $VersionNumber)
+	{
+		Set-NuSpecVersionNumber -NuSpecFilePath $NuSpecFilePath -NewVersionNumber $VersionNumber
+	}
+	
+	# Get the current release notes from the .nuspec file.
+	$currentReleaseNotes = Get-NuSpecReleaseNotes -NuSpecFilePath $NuSpecFilePath
 	
 	# If the Release Notes were not provided, prompt for them.
 	if (String-IsNullOrWhitespace $ReleaseNotes)
-	{
-		# Get the current release notes from the .nuspec file.
-		$currentReleaseNotes = Get-NuSpecReleaseNotes -NuSpecFilePath $NuSpecFilePath
-		
+	{		
 		# If we shouldn't prompt for the release notes, just use the existing ones from the NuSpec file (if it exists).
 		if ($NoPromptForReleaseNotes)
 		{
@@ -430,8 +438,11 @@ function Update-NuSpecFile
 		throw "User cancelled the Release Notes prompt, so exiting script."
 	}
 
-	# Insert the given Release Notes into the .nuspec file if some were provided.
-	Set-NuSpecReleaseNotes -NuSpecFilePath $NuSpecFilePath -NewReleaseNotes $ReleaseNotes
+	# Insert the given Release Notes into the .nuspec file if some were provided, and they are different than the current ones.
+	if ($currentReleaseNotes -ne $ReleaseNotes)
+	{
+		Set-NuSpecReleaseNotes -NuSpecFilePath $NuSpecFilePath -NewReleaseNotes $ReleaseNotes
+	}
 }
 
 function Get-NuSpecVersionNumber([parameter(Position=1,Mandatory=$true)][ValidateScript({Test-Path $_ -PathType Leaf})][string] $NuSpecFilePath)
@@ -1066,7 +1077,11 @@ try
 		# Have the NuGet executable try and auto-update itself.
 		$updateOutput = [string]::Empty	# Variable to hold the NuGet.exe output.
 	    Write-Verbose "About to run Update command '$updateCommand'."
-	    Invoke-Expression -Command $updateCommand | Tee-Object -Variable updateOutput
+	    Invoke-Expression -Command $updateCommand -OutVariable updateOutput > $null
+		
+		# Convert the output of the above command from an ArrayList of strings to a single string and write it to the Verbose stream.
+		$updateOutput = $($updateOutput -join [Environment]::NewLine)
+		Write-Verbose $updateOutput
 		
 		# If we have the path to the NuGet executable, we checked it out of TFS, and it did not auto-update itself, then undo the changes from TFS.
 		if ((Test-Path $NuGetExecutableFilePath) -and ($nuGetExecutableWasAlreadyCheckedOut -eq $false) -and !$updateOutput.EndsWith($NUGET_EXE_SUCCESSFULLY_UPDATED_TO_NEW_VERSION))
@@ -1145,18 +1160,22 @@ try
 		# Create the package.
 		$packOutput = [string]::Empty	# Variable to hold the NuGet.exe output.
 	    Write-Verbose "About to run Pack command '$packCommand'."
-	    Invoke-Expression -Command $packCommand | Tee-Object -Variable packOutput
+	    Invoke-Expression -Command $packCommand -OutVariable packOutput > $null
 	
-	    # Get the path the NuGet Package was created to.
-	    $rxNugetPackagePath = [regex] "(?i)($NUGET_EXE_SUCCESSFULLY_CREATED_PACKAGE_MESSAGE '(?<FilePath>.*?)'.)"
-	    $match = $rxNugetPackagePath.Match($packOutput)
+		# Convert the output of the above command from an ArrayList of strings to a single string and write it to the Verbose stream.
+		$packOutput = $($packOutput -join [Environment]::NewLine)
+		Write-Verbose $packOutput
+	
+	    # Get the path the NuGet Package was created to, and write it to the output stream.
+	    $match = $NUGET_EXE_SUCCESSFULLY_CREATED_PACKAGE_MESSAGE_REGEX.Match($packOutput)
 	    if ($match.Success)
 	    {
 		    $nuGetPackageFilePath = $match.Groups["FilePath"].Value
+			Write-Output $nuGetPackageFilePath
 	    }
 	    else
 	    {
-		    throw "Could not determine where NuGet Package was created to. Perhaps an error occurred while packing it. Look for errors from NuGet above (in the console window)."
+		    throw "Could not determine where NuGet Package was created to. This typically means that an error occurred while NuGet.exe was packing it. Look for errors from NuGet.exe above (in the console window), or in the following NuGet.exe output. You can also try running this command with the -Verbose switch for more information:{0}{1}" -f [Environment]::NewLine, $packOutput
 	    }
 	}
     # Else we were given a Package file to push.
@@ -1254,80 +1273,85 @@ try
         # Push the package to the gallery.
 		$pushOutput = [string]::Empty	# Variable to hold the NuGet.exe output.
 		Write-Verbose "About to run Push command '$pushCommand'."
-		Invoke-Expression -Command $pushCommand | Tee-Object -Variable pushOutput
+		Invoke-Expression -Command $pushCommand -OutVariable pushOutput > $null
+		
+		# Convert the output of the above command from an ArrayList of strings to a single string and write it to the Verbose stream.
+		$pushOutput = $($pushOutput -join [Environment]::NewLine)
+		Write-Verbose $pushOutput
 
-        # If the package was pushed successfully.
-        if ($pushOutput.EndsWith($NUGET_EXE_SUCCESSFULLY_PUSHED_PACKAGE_MESSAGE))
+		# If an error occurred while pushing the package, throw and error. Else it was pushed successfully.
+		if (!$pushOutput.EndsWith($NUGET_EXE_SUCCESSFULLY_PUSHED_PACKAGE_MESSAGE))
         {
-            # If the package should be deleted.
-            if ($DeletePackageAfterPush -and (Test-Path $nuGetPackageFilePath))
+            throw "Could not determine if package was pushed to gallery successfully. Perhaps an error occurred while pushing it. Look for errors from NuGet.exe above (in the console window), or in the following NuGet.exe output. You can also try running this command with the -Verbose switch for more information:{0}{1}" -f [Environment]::NewLine, $pushOutput
+        }
+
+        # If the package should be deleted.
+        if ($DeletePackageAfterPush -and (Test-Path $nuGetPackageFilePath))
+        {
+            # Delete the package.
+            Write-Verbose "Deleting NuGet Package '$nuGetPackageFilePath'."
+            Remove-Item -Path $nuGetPackageFilePath -Force
+
+            # If the package was output to the default directory, and the directory is now empty, delete the default directory too.
+            if (Test-Path $backupOutputDirectory)
             {
-                # Delete the package.
-                Write-Verbose "Deleting NuGet Package '$nuGetPackageFilePath'."
-                Remove-Item -Path $nuGetPackageFilePath -Force
-
-                # If the package was output to the default directory, and the directory is now empty, delete the default directory too.
-                if (Test-Path $backupOutputDirectory)
+                [int]$numberOfFilesInDefaultOutputDirectory = ((Get-ChildItem -Path $backupOutputDirectory -Force) | Measure-Object).Count
+                if ((Split-Path -Path $nuGetPackageFilePath -Parent) -eq $backupOutputDirectory -and $numberOfFilesInDefaultOutputDirectory -eq 0)
                 {
-                    [int]$numberOfFilesInDefaultOutputDirectory = ((Get-ChildItem -Path $backupOutputDirectory -Force) | Measure-Object).Count
-                    if ((Split-Path -Path $nuGetPackageFilePath -Parent) -eq $backupOutputDirectory -and $numberOfFilesInDefaultOutputDirectory -eq 0)
-                    {
-                        Write-Verbose "Deleting empty default NuGet package directory '$backupOutputDirectory'."
-                        Remove-Item -Path $backupOutputDirectory -Force
-                    }
+                    Write-Verbose "Deleting empty default NuGet package directory '$backupOutputDirectory'."
+                    Remove-Item -Path $backupOutputDirectory -Force
                 }
-            }
-
-            # If the user provided the Api Key via a prompt from this script, prompt them for if they want to save the given API key on this PC.
-            if ($UserProvidedApiKeyUsingPrompt)
-            {
-   		        # If we are not allowed to prompt the user, just assume they don't want to save the key on this PC.
-                if ($NoPrompt)
-                {
-                    $answer = "No"
-                }
-                # Else prompt the user if they want to save the given API key on this PC.
-                else
-                {
-					$promptMessage = "Do you want to save the API key you provided on this PC so that you don't have to enter it again next time?"
-				
-					# If we should prompt directly from PowerShell.
-					if ($UsePowershellPrompts)
-					{
-						$promptMessage += " (Yes|No)"
-						$answer = Read-Host $promptMessage
-					}
-					# Else use a nice GUI prompt.
-					else
-					{
-						$answer = Read-MessageBoxDialog -Message $promptMessage -WindowTitle "Save API Key On This PC?" -Buttons YesNo -Icon Question
-					}
-                }
-				
-				# If the user wants to save the API key.
-				if (($answer -is [string] -and $answer.StartsWith("Y", [System.StringComparison]::InvariantCultureIgnoreCase)) -or $answer -eq [System.Windows.Forms.DialogResult]::Yes)
-				{
-					# Create the command to use to save the Api key on this PC.
-		            $setApiKeyCommand = "& ""$NuGetExecutableFilePath"" setApiKey ""$apiKey"" -Source ""$sourceToPushPackageTo"""
-					$setApiKeyCommand = $setApiKeyCommand -ireplace ';', '`;'		# Escape any semicolons so they are not interpreted as the start of a new command.
-
-					# Save the Api key on this PC.
-					$setApiKeyOutput = [string]::Empty	# Variable to hold the NuGet.exe output.
-		            Write-Verbose "About to run command '$setApiKeyCommand'."
-		            Invoke-Expression -Command $setApiKeyCommand | Tee-Object -Variable setApiKeyOutput
-
-                    $expectedSuccessfulNuGetSetApiKeyOutput = ($NUGET_EXE_SUCCESSFULLY_SAVED_API_KEY_MESSAGE -f $apiKey, $sourceToPushPackageTo)	# "The API Key '$apiKey' was saved for '$sourceToPushPackageTo'."
-                    if ($setApiKeyOutput -ne $expectedSuccessfulNuGetSetApiKeyOutput)
-                    {
-                        throw "Could not determine if the API key was saved successfully. Perhaps an error occurred while setting it. Look for errors from NuGet above (in the console window)."
-                    }
-				}
             }
         }
-        # Else an error occurred while pushing the package, so throw and error.
-        else
+
+        # If the user provided the Api Key via a prompt from this script, prompt them for if they want to save the given API key on this PC.
+        if ($UserProvidedApiKeyUsingPrompt)
         {
-            throw "Could not determine if package was pushed to gallery successfully. Perhaps an error occurred while pushing it. Look for errors from NuGet above (in the console window)."
+	        # If we are not allowed to prompt the user, just assume they don't want to save the key on this PC.
+            if ($NoPrompt)
+            {
+                $answer = "No"
+            }
+            # Else prompt the user if they want to save the given API key on this PC.
+            else
+            {
+				$promptMessage = "Do you want to save the API key you provided on this PC so that you don't have to enter it again next time?"
+			
+				# If we should prompt directly from PowerShell.
+				if ($UsePowershellPrompts)
+				{
+					$promptMessage += " (Yes|No)"
+					$answer = Read-Host $promptMessage
+				}
+				# Else use a nice GUI prompt.
+				else
+				{
+					$answer = Read-MessageBoxDialog -Message $promptMessage -WindowTitle "Save API Key On This PC?" -Buttons YesNo -Icon Question
+				}
+            }
+			
+			# If the user wants to save the API key.
+			if (($answer -is [string] -and $answer.StartsWith("Y", [System.StringComparison]::InvariantCultureIgnoreCase)) -or $answer -eq [System.Windows.Forms.DialogResult]::Yes)
+			{
+				# Create the command to use to save the Api key on this PC.
+	            $setApiKeyCommand = "& ""$NuGetExecutableFilePath"" setApiKey ""$apiKey"" -Source ""$sourceToPushPackageTo"""
+				$setApiKeyCommand = $setApiKeyCommand -ireplace ';', '`;'		# Escape any semicolons so they are not interpreted as the start of a new command.
+
+				# Save the Api key on this PC.
+				$setApiKeyOutput = [string]::Empty	# Variable to hold the NuGet.exe output.
+	            Write-Verbose "About to run command '$setApiKeyCommand'."
+	            Invoke-Expression -Command $setApiKeyCommand -OutVariable setApiKeyOutput
+				
+				# Convert the output of the above command from an ArrayList of strings to a single string and write it to the Verbose stream.
+				$setApiKeyOutput = $($setApiKeyOutput -join [Environment]::NewLine)
+				Write-Verbose $setApiKeyOutput
+
+                $expectedSuccessfulNuGetSetApiKeyOutput = ($NUGET_EXE_SUCCESSFULLY_SAVED_API_KEY_MESSAGE -f $apiKey, $sourceToPushPackageTo)	# "The API Key '$apiKey' was saved for '$sourceToPushPackageTo'."
+                if ($setApiKeyOutput -ne $expectedSuccessfulNuGetSetApiKeyOutput)
+                {
+                    throw "Could not determine if the API key was saved successfully. Perhaps an error occurred while saving it. Look for errors from NuGet.exe above (in the console window), or in the following NuGet.exe output. You can also try running this command with the -Verbose switch for more information:{0}{1}" -f [Environment]::NewLine, $packOutput
+                }
+			}
         }
 	}
 }
