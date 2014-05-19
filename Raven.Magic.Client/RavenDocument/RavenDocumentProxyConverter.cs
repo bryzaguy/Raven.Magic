@@ -46,8 +46,8 @@
             var options = new ProxyGenerationOptions();
             options.AddMixinInstance(document);
             
-            if (type.IsInterface) return new ProxyGenerator().CreateInterfaceProxyWithoutTarget(type, interfaces, options);
-            return new ProxyGenerator().CreateClassProxy(type, interfaces, options);
+            if (type.IsInterface) return RavenDocumentExtentions.Generator.CreateInterfaceProxyWithoutTarget(type, interfaces, options);
+            return RavenDocumentExtentions.Generator.CreateClassProxy(type, interfaces, options);
         }
 
         private static Type GetType(JToken token, Type defaultType)

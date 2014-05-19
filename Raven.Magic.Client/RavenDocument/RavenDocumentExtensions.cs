@@ -61,9 +61,11 @@
         private static T AttachRavenIdToEntity<T>(this RavenDocument document, T entity)
         {
             if (entity is IRavenDocument || Equals(entity, null)) return entity;
-            var proxy = new ProxyGenerator().CreateClassProxyWithTarget(entity.GetType(), new[] {typeof (IRavenDocument)}, entity, GetOptions(document));
+            var proxy = Generator.CreateClassProxyWithTarget(entity.GetType(), new[] {typeof (IRavenDocument)}, entity, GetOptions(document));
             return (T)entity.MapTo(proxy);
         }
+
+        public static readonly ProxyGenerator Generator = new ProxyGenerator();
 
         public static object MapTo(this object source, object target)
         {
