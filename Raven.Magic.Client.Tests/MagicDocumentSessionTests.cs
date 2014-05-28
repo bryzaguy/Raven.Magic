@@ -48,7 +48,7 @@
                 }
             }
         }
-
+        
 
         [Fact]
         public void Loaded_Object_Property_Change_Is_Saved()
@@ -65,6 +65,29 @@
                 using (IDocumentSession session = OpenSession(store))
                 {
                     var result = session.Load<Limb>(id);
+                    result.Name = "test2";
+                    session.SaveChanges();
+                    Assert.Equal(2, session.Advanced.NumberOfRequests);
+                }
+            }
+        }
+
+
+        [Fact]
+        public void Queried_Object_Property_Change_Is_Saved()
+        {
+            const string id = "crapkeystuffs";
+            using (IDocumentStore store = NewDocumentStore())
+            {
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    session.Store(new Limb(){Name = "test1"}, id);
+                    session.SaveChanges();
+                }
+
+                using (IDocumentSession session = OpenSession(store))
+                {
+                    var result = session.Query<Limb>().Customize(a => a.WaitForNonStaleResults()).First();
                     result.Name = "test2";
                     session.SaveChanges();
                     Assert.Equal(2, session.Advanced.NumberOfRequests);

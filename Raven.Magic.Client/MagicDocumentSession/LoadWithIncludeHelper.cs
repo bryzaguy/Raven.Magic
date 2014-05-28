@@ -18,8 +18,14 @@
 
         public object Load(object entity, params string[] includes)
         {
-            includes.ToList().ForEach(a => Load(entity, a.Split('.'), false));
-            return _session.LoadId(entity);
+            var id = _session.GetId(entity);
+            if (id != null)
+            {
+                var result = _session.Load<object>(id);
+                includes.ToList().ForEach(a => Load(result, a.Split('.'), false));
+                return result;
+            }
+            return entity;
         }
 
         private void Load(object entity, string[] properties, bool isCollection)
