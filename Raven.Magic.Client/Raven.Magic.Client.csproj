@@ -55,6 +55,7 @@
     <Compile Include="DocumentCollections\DocumentCollectionExtentions.cs" />
     <Compile Include="DocumentCollections\DocumentList.cs" />
     <Compile Include="DocumentCollections\DocumentSet.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="MagicDocumentSession\LoadWithIncludeHelper.cs" />
     <Compile Include="MagicDocumentSession\MagicDocumentSession.cs" />
     <Compile Include="MagicDocumentSession\MagicLoadWithInclude.cs" />
